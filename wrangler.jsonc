@@ -1,0 +1,10 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "the-imposter",
+	"main": "party/index.ts",
+	"compatibility_date": "2025-01-23",
+	"durable_objects": {
+		"bindings": [{ "name": "GameServer", "class_name": "GameServer" }],
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameServer"] }],
+}

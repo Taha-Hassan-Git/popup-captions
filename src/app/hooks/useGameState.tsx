@@ -28,6 +28,7 @@ export function GameProvider({
 
 	const socket = usePartySocket({
 		host: PARTYKIT_HOST,
+		party: 'game-server',
 		room: roomId,
 		id: playerId,
 		onMessage(event) {

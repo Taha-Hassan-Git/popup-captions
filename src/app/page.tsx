@@ -16,7 +16,7 @@ export default function Home() {
 		const playerId = formData.get('playerId')
 		let data: GameInfo
 		try {
-			const res = await fetch(`${PARTYKIT_URL}/party/${roomId}`, {
+			const res = await fetch(`${PARTYKIT_URL}/parties/game-server/${roomId}`, {
 				method: 'POST',
 				body: JSON.stringify({ playerName, areaId, roomId, playerId }),
 				headers: { 'Content-Type': 'application/json' },

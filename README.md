@@ -1,6 +1,6 @@
 # The Imposter 🕵️
 
-A real-time multiplayer game inspired by social deduction games, built with Next.js, TypeScript, and PartyKit for real-time communication.
+A real-time multiplayer game inspired by social deduction games, built with Next.js, TypeScript, and partyserver (Cloudflare Workers + Durable Objects) for real-time communication.
 
 ## Overview
 
@@ -18,7 +18,7 @@ The Imposter is a social deduction game where players try to identify who among 
 
 - **Frontend**: Next.js 15.1.4, React 19
 - **Styling**: Tailwind CSS
-- **Real-time Communication**: PartyKit
+- **Real-time Communication**: partyserver (Cloudflare Workers + Durable Objects)
 - **Type Safety**: TypeScript
 - **Testing**: Jest with React Testing Library
 - **Code Quality**: ESLint, Prettier
@@ -48,7 +48,7 @@ npm install
 npm run dev
 ```
 
-4. Start the PartyKit server:
+4. Start the partyserver dev server:
 ```bash
 npm run dev:party
 ```
@@ -100,12 +100,28 @@ npm run test:watch
 ## Development Commands
 
 - `npm run dev`: Start Next.js development server
-- `npm run dev:party`: Start PartyKit server
+- `npm run dev:party`: Start the partyserver dev server (Cloudflare Workers, port 8787)
+- `npm run deploy:party`: Deploy the partyserver Worker to your Cloudflare account
 - `npm run build`: Build for production
 - `npm run start`: Start production server
 - `npm run lint`: Run ESLint
 - `npm test`: Run tests
 - `npm run test:watch`: Run tests in watch mode
+
+## Deployment
+
+The real-time server runs on Cloudflare Workers (Durable Objects) via partyserver:
+
+```bash
+npx wrangler login    # one-time; authenticates your Cloudflare account
+npm run deploy:party  # deploys to https://the-imposter.<your-subdomain>.workers.dev
+```
+
+Then set the following env var on your app host (e.g. Vercel):
+
+```env
+NEXT_PUBLIC_PARTYKIT_HOST=the-imposter.<your-subdomain>.workers.dev
+```
 
 ## Project Structure
 

@@ -2,7 +2,7 @@
 
 # dependencies
 /node_modules
-/.partykit
+/.wrangler
 /party/node_modules
 /party/.vscode
 /.pnp

@@ -1,13 +1,22 @@
-import type * as Party from 'partykit/server'
+import { type Connection, routePartykitRequest, Server } from 'partyserver'
 import { GameManager } from '../game-logic/GameManager'
 import { Action, GameFormInfo, GameInfo } from '../game-logic/types'
 
-export default class Server implements Party.Server {
-	constructor(readonly party: Party.Room) {}
+type Env = {
+	GameServer: DurableObjectNamespace<GameServer>
+}
 
+export class GameServer extends Server<Env> {
 	gameManager: GameManager | undefined
 
-	async onRequest(req: Party.Request) {
+	async onStart() {
+		const savedGame = await this.ctx.storage.get<GameInfo>('game')
+		if (savedGame) {
+			this.gameManager = new GameManager(savedGame)
+		}
+	}
+
+	async onRequest(req: Request) {
 		const formInfo = (await req.json()) as GameFormInfo
 		try {
 			if (!this.gameManager) {
@@ -24,7 +33,7 @@ export default class Server implements Party.Server {
 					},
 				})
 				await this.saveGame()
-				this.party.broadcast(JSON.stringify(this.gameManager.getState()))
+				this.broadcast(JSON.stringify(this.gameManager.getState()))
 			}
 			return new Response(JSON.stringify(this.gameManager.getState()), {
 				status: 200,
@@ -35,31 +44,29 @@ export default class Server implements Party.Server {
 		}
 	}
 
-	async onConnect(connection: Party.Connection) {
+	onConnect(connection: Connection) {
 		if (!this.gameManager) return
 		connection.send(JSON.stringify(this.gameManager.getState()))
 	}
 
-	async onMessage(message: string) {
+	onMessage(_connection: Connection, message: string | ArrayBuffer) {
 		if (!this.gameManager) return
 
-		const action = JSON.parse(message) as Action
+		const raw = typeof message === 'string' ? message : new TextDecoder().decode(message)
+		const action = JSON.parse(raw) as Action
 		this.gameManager.handleAction(action)
-		this.party.broadcast(JSON.stringify(this.gameManager.getState()))
+		this.broadcast(JSON.stringify(this.gameManager.getState()))
 	}
 
 	async saveGame() {
 		if (this.gameManager) {
-			await this.party.storage.put<GameInfo>('game', this.gameManager.getState())
-		}
-	}
-
-	async onStart() {
-		const savedGame = await this.party.storage.get<GameInfo>('game')
-		if (savedGame) {
-			this.gameManager = new GameManager(savedGame)
+			await this.ctx.storage.put<GameInfo>('game', this.gameManager.getState())
 		}
 	}
 }
 
-Server satisfies Party.Worker
+export default {
+	async fetch(request: Request, env: Env): Promise<Response> {
+		return (await routePartykitRequest(request, env)) || new Response('Not Found', { status: 404 })
+	},
+} satisfies ExportedHandler<Env>
