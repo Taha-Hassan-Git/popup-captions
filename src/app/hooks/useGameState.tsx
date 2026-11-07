@@ -10,7 +10,7 @@ interface GameContextValue {
 }
 
 const gameContext = createContext<GameContextValue>({
-	gameState: { state: 'loading' },
+	gameState: null,
 	dispatch: () => {},
 	localPlayer: null,
 })
@@ -24,7 +24,7 @@ export function GameProvider({
 	playerId: string
 	roomId: string
 }) {
-	const [gameState, setGameState] = useState<GameState>({ state: 'loading' })
+	const [gameState, setGameState] = useState<GameState>(null)
 
 	const socket = usePartySocket({
 		host: PARTYKIT_HOST,
@@ -38,7 +38,7 @@ export function GameProvider({
 	})
 
 	const localPlayer = useMemo(() => {
-		if (gameState.state === 'loading') return null
+		if (!gameState) return null
 		return gameState.players.find((player) => player.id === playerId) ?? null
 	}, [gameState, playerId])
 
@@ -69,11 +69,11 @@ export function useLocalPlayer(): Player | null {
 	return useContext(gameContext).localPlayer
 }
 
-/** Asserts the game has loaded — use inside lobby/play/finished screens. */
+/** Asserts the room has loaded. */
 export function useActiveGame(): { gameState: GameInfo; dispatch: (action: Action) => void } {
 	const { gameState, dispatch } = useContext(gameContext)
-	if (gameState.state === 'loading') {
-		throw new Error('Game is still loading')
+	if (!gameState) {
+		throw new Error('Room is still loading')
 	}
 	return { gameState, dispatch }
 }

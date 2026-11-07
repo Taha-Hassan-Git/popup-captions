@@ -12,15 +12,16 @@ export default function Home() {
 		'use server'
 		const playerName = formData.get('playerName')
 		const roomId = formData.get('roomId') || generateRoomId()
-		const areaId = formData.get('areaId')
+		const role = formData.get('role')
 		const playerId = formData.get('playerId')
 		let data: GameInfo
 		try {
 			const res = await fetch(`${PARTYKIT_URL}/parties/game-server/${roomId}`, {
 				method: 'POST',
-				body: JSON.stringify({ playerName, areaId, roomId, playerId }),
+				body: JSON.stringify({ playerName, role, roomId, playerId }),
 				headers: { 'Content-Type': 'application/json' },
 			})
+			if (!res.ok) throw new Error(await res.text())
 			data = (await res.json()) as GameInfo
 		} catch (error) {
 			console.error(`Error fetching or creating room ${roomId}`, error)
@@ -37,7 +38,7 @@ export default function Home() {
 					<NewGameForm />
 				</form>
 				<Panel>
-					<h2 className="text-2xl font-bold text-gray-900 mb-6">How to Play</h2>
+					<h2 className="text-2xl font-bold text-gray-900 mb-6">How it works</h2>
 					<HowToPlayContent />
 				</Panel>
 			</div>

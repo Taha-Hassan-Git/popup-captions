@@ -1,5 +1,5 @@
 'use client'
-import { VenetianMask } from 'lucide-react'
+import { Captions } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Panel } from './Panel'
@@ -9,15 +9,15 @@ export function LoadingScreen() {
 
 	useEffect(() => {
 		const timeout = setTimeout(() => {
-			router.push('/?error=Error+loading+game')
+				router.push('/?error=Error+loading+room')
 		}, 1000 * 60)
 
 		return () => clearTimeout(timeout)
 	}, [router])
 	return (
 		<Panel variant="column" className="animate-pulse self-center mt-5 h-96 justify-center">
-			<VenetianMask className="w-48 h-48 text-gray-400" />
-			<p className="text-gray-700">Loading game...</p>
+			<Captions className="w-48 h-48 text-gray-400" />
+			<p className="text-gray-700">Loading room...</p>
 		</Panel>
 	)
 }

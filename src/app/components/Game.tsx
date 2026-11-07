@@ -1,11 +1,10 @@
 'use client'
 import { usePathname } from 'next/navigation'
-import { GameProvider, useGameState } from '../hooks/useGameState'
+import { GameProvider, useGameState, useLocalPlayer } from '../hooks/useGameState'
 import { usePlayerId } from '../hooks/usePlayerId'
 import { LoadingScreen } from './LoadingScreen'
 import { Pill } from './Pill'
-import PlayingScreen from './PlayingScreen'
-import { WaitingScreen } from './WaitingScreen'
+import { RoleIcon, roleLabels, RoomScreen } from './RoomScreen'
 
 const ROUTE = '/game/'
 export default function GameContainer() {
@@ -28,7 +27,8 @@ export default function GameContainer() {
 }
 function InfoBar() {
 	const gameState = useGameState()
-	if (gameState.state === 'loading') return null
+	const localPlayer = useLocalPlayer()
+	if (!gameState) return null
 	return (
 		<div className="bg-gray-100 border border-gray-100 w-screen">
 			<div className="max-w-[640px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -40,12 +40,14 @@ function InfoBar() {
 							<Pill>{gameState.roomId}</Pill>
 						</span>
 					</div>
-					<Pill>
-						<span className="text-gray-600">Round:</span>
-						<span data-testid="info-bar-round" className="font-medium text-gray-900">
-							{gameState.state}
-						</span>
-					</Pill>
+					{localPlayer && (
+						<Pill className="gap-1">
+							<RoleIcon role={localPlayer.role} className="w-4 h-4 text-gray-600" />
+							<span data-testid="info-bar-role" className="font-medium text-gray-900">
+								{roleLabels[localPlayer.role]}
+							</span>
+						</Pill>
+					)}
 				</div>
 			</div>
 		</div>
@@ -54,16 +56,9 @@ function InfoBar() {
 function Game() {
 	const gameState = useGameState()
 
-	const renderScreen = () => {
-		switch (gameState.state) {
-			case 'loading':
-				return <LoadingScreen />
-			case 'playing':
-				return <PlayingScreen />
-			default:
-				return <WaitingScreen />
-		}
-	}
-
-	return <div className="flex flex-col gap-5 items-center w-full pt-5">{renderScreen()}</div>
+	return (
+		<div className="flex flex-col gap-5 items-center w-full pt-5">
+			{gameState ? <RoomScreen /> : <LoadingScreen />}
+		</div>
+	)
 }

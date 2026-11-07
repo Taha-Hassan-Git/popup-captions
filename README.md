@@ -1,15 +1,15 @@
-# The Imposter 🕵️
+# Popup
 
-A real-time multiplayer game inspired by social deduction games, built with Next.js, TypeScript, and partyserver (Cloudflare Workers + Durable Objects) for real-time communication.
+A live captioning app where multiple phones share captions in real time, built with Next.js, TypeScript, and partyserver (Cloudflare Workers + Durable Objects) for real-time communication.
 
 ## Overview
 
-The Imposter is a social deduction game where players try to identify who among them is the imposter. Each round, players are given a word from a chosen category (films, animals, countries, or sports), except for one player who is designated as the imposter. The imposter must pretend to know the word while other players discuss and try to identify who the imposter is.
+Anyone can open a room. Everyone who joins chooses whether their phone is a **mic** (sends captions up to the server) or **audience** (just shows the captions). The server pushes caption updates to every phone in the room.
 
 ## Features
 
-- Real-time multiplayer gameplay
-- Multiple categories to choose from (films, animals, countries, sports)
+- Real-time caption sharing across phones
+- Mic and audience roles chosen on join
 - Score tracking system
 - Round-based gameplay
 - QR code sharing for easy room joining
@@ -35,7 +35,7 @@ The Imposter is a social deduction game where players try to identify who among 
 1. Clone the repository:
 ```bash
 git clone [repository-url]
-cd the-imposter
+cd popup-captions
 ```
 
 2. Install dependencies:
@@ -61,29 +61,11 @@ Create a `.env.local` file in the root directory with:
 NEXT_PUBLIC_VERCEL_ENV=development
 ```
 
-## Game Flow
+## Room Flow
 
-1. **Waiting Room**
-   - Players join a room using a room code or QR code
-   - Minimum 3 players required to start
-   - All players must mark themselves as ready
-
-2. **Playing Phase**
-   - One player is randomly assigned as the imposter
-   - Regular players see the word, imposter sees "You are the imposter"
-   - Players mark themselves as ready to vote when discussion is complete
-
-3. **Voting Phase**
-   - Players vote for who they think is the imposter
-   - Cannot vote for yourself
-   - Game moves to results when all votes are in
-
-4. **Results Phase**
-   - Imposter is revealed
-   - Scores are updated:
-     - +1 point for correctly voting for the imposter
-     - +3 points for the imposter if they avoid detection
-   - Players can start next round
+1. Create a room, or join one using its room ID or QR code
+2. Choose a role for your phone: **mic** or **audience**
+3. You're in — there's no waiting room or ready-up step
 
 ## Testing
 
@@ -114,13 +96,13 @@ The real-time server runs on Cloudflare Workers (Durable Objects) via partyserve
 
 ```bash
 npx wrangler login    # one-time; authenticates your Cloudflare account
-npm run deploy:party  # deploys to https://the-imposter.<your-subdomain>.workers.dev
+npm run deploy:party  # deploys to https://popup.<your-subdomain>.workers.dev
 ```
 
 Then set the following env var on your app host (e.g. Vercel):
 
 ```env
-NEXT_PUBLIC_PARTYKIT_HOST=the-imposter.<your-subdomain>.workers.dev
+NEXT_PUBLIC_PARTYKIT_HOST=popup.<your-subdomain>.workers.dev
 ```
 
 ## Project Structure

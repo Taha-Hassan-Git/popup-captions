@@ -1,15 +1,24 @@
 'use client'
+import classNames from 'classnames'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { GameFormInfo } from '../../../game-logic/types'
+import { Role, roles } from '../../../game-logic/types'
 import { usePlayerId } from '../hooks/usePlayerId'
 import { generateRoomId } from '../utils/generateRoomId'
 import { Button } from './Button'
 import { Input } from './Input'
 import { RedMessage } from './Message'
 import { Panel } from './Panel'
+import { RoleIcon, roleLabels } from './RoomScreen'
 
-const defaultGameFormData: GameFormInfo = { roomId: '', playerName: '', playerId: '' }
+type JoinFormData = { roomId: string; playerName: string; role: Role | null }
+
+const defaultGameFormData: JoinFormData = { roomId: '', playerName: '', role: null }
+
+const roleDescriptions: Record<Role, string> = {
+	mic: 'This phone listens and sends captions',
+	audience: 'This phone just shows the captions',
+}
 
 const placeHolderRoomId = generateRoomId()
 
@@ -17,12 +26,11 @@ export default function NewGameForm() {
 	const searchParams = useSearchParams()
 	const errorMessage = searchParams.get('error')
 	const [showErrorMessage, setShowErrorMessage] = useState<boolean>(() => !!errorMessage)
-	const [gameFormData, setGameFormData] = useState<GameFormInfo>(defaultGameFormData)
+	const [gameFormData, setGameFormData] = useState<JoinFormData>(defaultGameFormData)
 	const [showJoinExisting, setShowJoinExisting] = useState<boolean | undefined>(undefined)
 	const playerId = usePlayerId()
-	const isSubmitDisabled = showJoinExisting
-		? !gameFormData.roomId || !gameFormData.playerName
-		: !gameFormData.playerName
+	const isSubmitDisabled =
+		!gameFormData.playerName || !gameFormData.role || (showJoinExisting && !gameFormData.roomId)
 
 	useEffect(() => {
 		if (errorMessage) {
@@ -94,7 +102,7 @@ export default function NewGameForm() {
 				</Button>
 			</div>
 			<div className="p-8 flex flex-col gap-5 w-full">
-				{showJoinExisting ? (
+				{showJoinExisting && (
 					<Input
 						name={'roomId'}
 						type={'text'}
@@ -107,8 +115,6 @@ export default function NewGameForm() {
 							})
 						}}
 					/>
-				) : (
-					<div>Something</div>
 				)}
 
 				<Input
@@ -124,6 +130,32 @@ export default function NewGameForm() {
 					}}
 				/>
 				<input readOnly className="hidden" name="playerId" value={playerId}></input>
+				<fieldset className="flex flex-col gap-2">
+					<legend className="mb-2">Use this phone as:</legend>
+					{roles.map((role) => (
+						<label
+							key={role}
+							className={classNames(
+								'flex items-center gap-3 p-3 border rounded-md cursor-pointer',
+								gameFormData.role === role ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+							)}
+						>
+							<input
+								type="radio"
+								name="role"
+								value={role}
+								checked={gameFormData.role === role}
+								onChange={() => setGameFormData((prev) => ({ ...prev, role }))}
+								className="sr-only"
+							/>
+							<RoleIcon role={role} className="w-6 h-6 text-gray-600" />
+							<span className="flex flex-col">
+								<span className="font-medium">{roleLabels[role]}</span>
+								<span className="text-sm text-gray-500">{roleDescriptions[role]}</span>
+							</span>
+						</label>
+					))}
+				</fieldset>
 				<div className="self-center w-full">
 					<Button
 						disabled={isSubmitDisabled}

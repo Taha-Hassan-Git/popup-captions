@@ -1,7 +1,7 @@
 import { Locator, Page } from '@playwright/test'
 
 /**
- * Page object for the homepage where players create or join a room.
+ * Page object for the homepage where users create or join a room.
  */
 export class HomePage {
 	readonly page: Page
@@ -12,6 +12,8 @@ export class HomePage {
 	readonly roomIdInput: Locator
 	readonly createRoomFormButton: Locator
 	readonly joinRoomFormButton: Locator
+	readonly micRoleOption: Locator
+	readonly audienceRoleOption: Locator
 
 	constructor(page: Page) {
 		this.page = page
@@ -22,6 +24,8 @@ export class HomePage {
 		this.roomIdInput = page.getByLabel('Room Id:')
 		this.createRoomFormButton = page.getByRole('button', { name: 'Create Room' })
 		this.joinRoomFormButton = page.getByRole('button', { name: 'Join Room' })
+		this.micRoleOption = page.getByText('Mic', { exact: true })
+		this.audienceRoleOption = page.getByText('Audience', { exact: true })
 	}
 
 	async goto() {

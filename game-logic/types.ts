@@ -1,27 +1,28 @@
-export type Action =
-	| { type: 'toggle-ready'; payload: { id: string } }
-	| { type: 'player-joined'; payload: { name: string; id: string } }
+export type Action = { type: 'player-joined'; payload: { name: string; id: string; role: Role } }
+
+export const roles = ['mic', 'audience'] as const
+export type Role = (typeof roles)[number]
+
+export function isRole(value: unknown): value is Role {
+	return roles.includes(value as Role)
+}
 
 export type Player = {
 	name: string
 	id: string
-	ready: boolean
+	role: Role
 }
 
-export type StateNames = 'playing' | 'waiting'
-
 export interface GameInfo {
-	state: StateNames
 	roomId: string
 	players: Player[]
 }
 
-export type GameLoading = { state: 'loading' }
-
-export type GameState = GameInfo | GameLoading
+export type GameState = GameInfo | null
 
 export interface GameFormInfo {
 	roomId: string
 	playerName: string
 	playerId: string
+	role: Role
 }

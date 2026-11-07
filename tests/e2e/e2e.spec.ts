@@ -18,9 +18,11 @@ test.describe('Player join behaviour', () => {
 			await expect(homePage.createRoomFormButton).toBeVisible()
 			await expect(homePage.joinRoomFormButton).toBeHidden()
 
-			// The submit button is disabled until a name is entered
+			// The submit button is disabled until a name and role are chosen
 			await expect(homePage.createRoomFormButton).toBeDisabled()
 			await homePage.nameInput.fill('PlayerName')
+			await expect(homePage.createRoomFormButton).toBeDisabled()
+			await homePage.micRoleOption.click()
 			await expect(homePage.createRoomFormButton).toBeEnabled()
 
 			// Switch to the join room form
@@ -29,12 +31,14 @@ test.describe('Player join behaviour', () => {
 			await expect(homePage.joinRoomFormButton).toBeVisible()
 		})
 
-		test('Can create a room and reach the waiting screen', async ({ homePage, gamePage }) => {
+		test('Can create a room and go straight in', async ({ homePage, gamePage }) => {
 			await homePage.createNewButton.click()
 			await homePage.nameInput.fill('PlayerName')
+			await homePage.micRoleOption.click()
 			await homePage.createRoomFormButton.click()
 
-			await expect(gamePage.readyButton).toBeVisible()
+			await expect(gamePage.roomId).toBeVisible()
+			await expect(gamePage.infoBarRole).toHaveText('Mic')
 		})
 	})
 
@@ -75,10 +79,10 @@ async function createRoom(context: PlayerContext, name: string): Promise<string>
 	await context.homePage.goto()
 	await context.homePage.createNewButton.click()
 	await context.homePage.nameInput.fill(name)
+	await context.homePage.micRoleOption.click()
 	await context.homePage.createRoomFormButton.click()
 
-	// Wait for redirect and verify we are on the waiting screen
-	await expect(context.gamePage.readyButton).toBeVisible()
+	await expect(context.gamePage.roomId).toBeVisible()
 
 	// Return the room ID for reuse
 	return await context.gamePage.roomId.innerText()
@@ -89,16 +93,16 @@ async function joinRoom(context: PlayerContext, roomId: string, name: string) {
 	await context.homePage.joinExistingButton.click()
 	await context.homePage.roomIdInput.fill(roomId)
 	await context.homePage.nameInput.fill(name)
+	await context.homePage.audienceRoleOption.click()
 	await context.homePage.joinRoomFormButton.click()
 
-	// Wait for redirect and verify we are on the waiting screen
-	await expect(context.gamePage.readyButton).toBeVisible()
+	await expect(context.gamePage.infoBarRole).toHaveText('Audience')
 }
 
 // Verify the player count with a retry to allow for real-time sync.
 async function verifyPlayerCount(context: PlayerContext, expectedCount: number, timeout = 5000) {
 	await expect(async () => {
-		const count = await context.gamePage.getNumberOfWaitingPlayers()
+		const count = await context.gamePage.getNumberOfPlayers()
 		expect(count).toBe(expectedCount)
 	}).toPass({ timeout })
 }

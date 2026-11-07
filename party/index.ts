@@ -1,6 +1,6 @@
 import { type Connection, routePartykitRequest, Server } from 'partyserver'
 import { GameManager } from '../game-logic/GameManager'
-import { Action, GameFormInfo, GameInfo } from '../game-logic/types'
+import { Action, GameFormInfo, GameInfo, isRole } from '../game-logic/types'
 
 type Env = {
 	GameServer: DurableObjectNamespace<GameServer>
@@ -18,6 +18,9 @@ export class GameServer extends Server<Env> {
 
 	async onRequest(req: Request) {
 		const formInfo = (await req.json()) as GameFormInfo
+		if (!isRole(formInfo.role)) {
+			return new Response('Invalid role', { status: 400 })
+		}
 		try {
 			if (!this.gameManager) {
 				// setting up a new game
@@ -30,6 +33,7 @@ export class GameServer extends Server<Env> {
 					payload: {
 						name: formInfo.playerName,
 						id: formInfo.playerId,
+						role: formInfo.role,
 					},
 				})
 				await this.saveGame()

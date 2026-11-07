@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-	title: 'Turf War',
-	description: 'A location-based game of noughts and crosses played across a London borough',
+	title: 'Popup',
+	description: 'Live captions shared between phones',
 }
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en">
-			<link rel="icon" href="favicon.svg" sizes="any" />
+			<link rel="icon" href="/favicon.svg" sizes="any" />
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 w-screen`}
 			>
