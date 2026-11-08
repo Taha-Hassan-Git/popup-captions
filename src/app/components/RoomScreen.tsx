@@ -2,6 +2,7 @@ import { Eye, Mic } from 'lucide-react'
 import QRCode from 'react-qr-code'
 import { Player, Role } from '../../../game-logic/types'
 import { useActiveGame, useLocalPlayer } from '../hooks/useGameState'
+import { CaptionFeed, MicControls } from './Captions'
 import { Panel } from './Panel'
 import { Pill } from './Pill'
 
@@ -16,6 +17,8 @@ export function RoomScreen() {
 	const { gameState } = useActiveGame()
 	return (
 		<>
+			<CaptionFeed />
+			<MicControls />
 			<Panel>
 				<div className="max-h-[280px] overflow-y-scroll w-full">
 					<div className="flex items-center gap-2 mb-2">

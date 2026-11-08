@@ -1,11 +1,15 @@
-import { Action, GameFormInfo, GameInfo, Player, Role } from './types'
+import { Action, Caption, GameFormInfo, GameInfo, Player, Role } from './types'
+
+export const MAX_CAPTIONS = 50
+export const MAX_CAPTION_LENGTH = 1000
 
 export class GameManager {
 	private game: GameInfo
 
 	constructor(gameInfo?: GameInfo) {
 		if (gameInfo) {
-			this.game = gameInfo
+			// rooms saved before captions existed have no captions field
+			this.game = { ...gameInfo, captions: gameInfo.captions ?? [] }
 		} else {
 			throw new Error('Game info is required to initialize GameManager')
 		}
@@ -15,6 +19,7 @@ export class GameManager {
 		const initialGame: GameInfo = {
 			roomId: formInfo.roomId,
 			players: [{ name: formInfo.playerName, id: formInfo.playerId, role: formInfo.role }],
+			captions: [],
 		}
 
 		return new GameManager(initialGame)
@@ -31,7 +36,36 @@ export class GameManager {
 				this.handlePlayerJoined(name, id, role)
 				break
 			}
+			case 'caption': {
+				this.handleCaption(action.payload)
+				break
+			}
 		}
+	}
+
+	private handleCaption(caption: Caption): void {
+		const speaker = this.game.players.find((player) => player.id === caption.playerId)
+		if (speaker?.role !== 'mic') return
+
+		const text = String(caption.text).trim().slice(0, MAX_CAPTION_LENGTH)
+		const existing = this.game.captions.some((c) => c.id === caption.id)
+
+		let captions: Caption[]
+		if (!text) {
+			captions = this.game.captions.filter((c) => c.id !== caption.id)
+		} else {
+			const updated: Caption = {
+				id: String(caption.id),
+				playerId: speaker.id,
+				text,
+				final: Boolean(caption.final),
+			}
+			captions = existing
+				? this.game.captions.map((c) => (c.id === caption.id ? updated : c))
+				: [...this.game.captions, updated]
+		}
+
+		this.game = { ...this.game, captions: captions.slice(-MAX_CAPTIONS) }
 	}
 
 	private readonly playerNameAdditions: string[] = [

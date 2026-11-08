@@ -72,6 +72,47 @@ test.describe('Player join behaviour', () => {
 			await verifyPlayerCount(player1, 2)
 			await verifyPlayerCount(player2, 2)
 		})
+
+	})
+
+	test.describe('Captions', () => {
+		test('Captions from a mic appear for the audience', async ({ createPlayerContext }) => {
+			const [mic, audience] = await createPlayerContext(2)
+
+			// Real speech recognition can't run headless, so stub it and drive it by hand.
+			await mic.page.addInitScript(() => {
+				class FakeSpeechRecognition {
+					onresult: ((event: unknown) => void) | null = null
+					onend: (() => void) | null = null
+					start() {
+						;(window as unknown as { __recognition: unknown }).__recognition = this
+					}
+					stop() {
+						this.onend?.()
+					}
+					abort() {}
+				}
+				;(window as unknown as { webkitSpeechRecognition: unknown }).webkitSpeechRecognition =
+					FakeSpeechRecognition
+				;(window as unknown as { SpeechRecognition: unknown }).SpeechRecognition =
+					FakeSpeechRecognition
+			})
+
+			const roomId = await createRoom(mic, 'Speaker')
+			await joinRoom(audience, roomId, 'Listener')
+
+			await mic.page.getByRole('button', { name: 'Start captioning' }).click()
+			await mic.page.evaluate(() => {
+				const recognition = (
+					window as unknown as { __recognition: { onresult: (event: unknown) => void } }
+				).__recognition
+				const result = Object.assign([{ transcript: 'Hello from the mic' }], { isFinal: true })
+				recognition.onresult({ resultIndex: 0, results: [result] })
+			})
+
+			await expect(audience.page.getByTestId('caption-feed')).toContainText('Hello from the mic')
+			await expect(audience.page.getByTestId('caption-feed')).toContainText('Speaker')
+		})
 	})
 })
 

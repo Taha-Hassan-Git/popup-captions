@@ -53,13 +53,25 @@ export class GameServer extends Server<Env> {
 		connection.send(JSON.stringify(this.gameManager.getState()))
 	}
 
-	onMessage(_connection: Connection, message: string | ArrayBuffer) {
+	onMessage(connection: Connection, message: string | ArrayBuffer) {
 		if (!this.gameManager) return
 
 		const raw = typeof message === 'string' ? message : new TextDecoder().decode(message)
-		const action = JSON.parse(raw) as Action
+		let action: Action
+		try {
+			action = JSON.parse(raw) as Action
+		} catch {
+			return
+		}
+		if (action.type === 'caption') {
+			// the socket id is the player id, so mics can't caption as someone else
+			action = { ...action, payload: { ...action.payload, playerId: connection.id } }
+		}
 		this.gameManager.handleAction(action)
 		this.broadcast(JSON.stringify(this.gameManager.getState()))
+		if (action.type === 'caption' && action.payload.final) {
+			void this.saveGame()
+		}
 	}
 
 	async saveGame() {
