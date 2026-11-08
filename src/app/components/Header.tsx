@@ -1,9 +1,9 @@
 'use client'
-import * as Dialog from '@radix-ui/react-dialog'
 import { CircleHelp } from 'lucide-react'
 import Link from 'next/link'
 import { HowToPlayContent } from './HowToPlayContent'
 import { Lockup } from './Lockup'
+import { Modal } from './Modal'
 
 export default function Header() {
 	return (
@@ -22,19 +22,18 @@ export default function Header() {
 
 function HowToPlayDialog() {
 	return (
-		<Dialog.Root>
-			<Dialog.Trigger asChild>
-				<button className="bg-gray-100 p-2 border border-gray-200 shadow-sm rounded-lg">
+		<Modal
+			title="How it works"
+			trigger={
+				<button
+					aria-label="How it works"
+					className="bg-gray-100 p-2 border border-gray-200 shadow-sm rounded-lg"
+				>
 					<CircleHelp className="w-7 h-7 text-gray-500" />
 				</button>
-			</Dialog.Trigger>
-			<Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50" />
-			<Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-4 rounded-lg shadow-lg w-[90%] max-w-lg">
-				<Dialog.DialogTitle className="text-2xl font-bold text-gray-900 mb-6">
-					How it works
-				</Dialog.DialogTitle>
-				<HowToPlayContent />
-			</Dialog.Content>
-		</Dialog.Root>
+			}
+		>
+			<HowToPlayContent />
+		</Modal>
 	)
 }

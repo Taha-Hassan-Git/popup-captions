@@ -37,28 +37,41 @@ test.describe('Player join behaviour', () => {
 			await homePage.micRoleOption.click()
 			await homePage.createRoomFormButton.click()
 
-			await expect(gamePage.roomId).toBeVisible()
-			await expect(gamePage.infoBarRole).toHaveText('Mic')
+			await expect(gamePage.startCaptioningButton).toBeVisible()
+			await expect(gamePage.speakers).toHaveCount(1)
+
+			await gamePage.inviteButton.click()
+			await expect(gamePage.roomId).toHaveText(gamePage.getRoomIdFromUrl())
 		})
 	})
 
 	test.describe('Game Room', () => {
-		test('Multiple players can join the same game room', async ({ createPlayerContext }) => {
+		test('Multiple speakers can join the same room', async ({ createPlayerContext }) => {
 			const [player1, player2, player3] = await createPlayerContext(3)
 
 			// Host creates the room
 			const roomId = await createRoom(player1, 'Player1')
 
 			// Player 2 joins
-			await joinRoom(player2, roomId, 'Player2')
-			await verifyPlayerCount(player1, 2)
-			await verifyPlayerCount(player2, 2)
+			await joinRoom(player2, roomId, 'Player2', 'mic')
+			await expect(player1.gamePage.speakers).toHaveCount(2)
+			await expect(player2.gamePage.speakers).toHaveCount(2)
 
 			// Player 3 joins
-			await joinRoom(player3, roomId, 'Player3')
-			await verifyPlayerCount(player1, 3)
-			await verifyPlayerCount(player2, 3)
-			await verifyPlayerCount(player3, 3)
+			await joinRoom(player3, roomId, 'Player3', 'mic')
+			await expect(player1.gamePage.speakers).toHaveCount(3)
+			await expect(player2.gamePage.speakers).toHaveCount(3)
+			await expect(player3.gamePage.speakers).toHaveCount(3)
+		})
+
+		test('Audience members are not shown as speakers', async ({ createPlayerContext }) => {
+			const [player1, player2] = await createPlayerContext(2)
+
+			const roomId = await createRoom(player1, 'Player1')
+			await joinRoom(player2, roomId, 'Player2', 'audience')
+
+			await expect(player2.gamePage.speakers).toHaveCount(1)
+			await expect(player2.gamePage.startCaptioningButton).toBeHidden()
 		})
 
 		test('Players with duplicate names can still join', async ({ createPlayerContext }) => {
@@ -68,11 +81,10 @@ test.describe('Player join behaviour', () => {
 			const roomId = await createRoom(player1, 'SameName')
 
 			// Player 2 joins with the same name
-			await joinRoom(player2, roomId, 'SameName')
-			await verifyPlayerCount(player1, 2)
-			await verifyPlayerCount(player2, 2)
+			await joinRoom(player2, roomId, 'SameName', 'mic')
+			await expect(player1.gamePage.speakers).toHaveCount(2)
+			await expect(player2.gamePage.speakers).toHaveCount(2)
 		})
-
 	})
 
 	test.describe('Captions', () => {
@@ -99,9 +111,9 @@ test.describe('Player join behaviour', () => {
 			})
 
 			const roomId = await createRoom(mic, 'Speaker')
-			await joinRoom(audience, roomId, 'Listener')
+			await joinRoom(audience, roomId, 'Listener', 'audience')
 
-			await mic.page.getByRole('button', { name: 'Start captioning' }).click()
+			await mic.gamePage.startCaptioningButton.click()
 			await mic.page.evaluate(() => {
 				const recognition = (
 					window as unknown as { __recognition: { onresult: (event: unknown) => void } }
@@ -112,6 +124,15 @@ test.describe('Player join behaviour', () => {
 
 			await expect(audience.page.getByTestId('caption-feed')).toContainText('Hello from the mic')
 			await expect(audience.page.getByTestId('caption-feed')).toContainText('Speaker')
+
+			const speakerBar = audience.page.getByTestId('speaker-bar')
+			const micSpeakerBar = mic.page.getByTestId('speaker-bar')
+			await Promise.all([
+				expect(speakerBar).toContainText('Speaker, speaking'),
+				expect(micSpeakerBar).toContainText('Speaker (you), speaking'),
+			])
+			await expect(speakerBar).not.toContainText('speaking')
+			await expect(micSpeakerBar).not.toContainText('speaking')
 		})
 	})
 })
@@ -123,27 +144,28 @@ async function createRoom(context: PlayerContext, name: string): Promise<string>
 	await context.homePage.micRoleOption.click()
 	await context.homePage.createRoomFormButton.click()
 
-	await expect(context.gamePage.roomId).toBeVisible()
-
-	// Return the room ID for reuse
-	return await context.gamePage.roomId.innerText()
+	await expect(context.gamePage.startCaptioningButton).toBeVisible()
+	return context.gamePage.getRoomIdFromUrl()
 }
 
-async function joinRoom(context: PlayerContext, roomId: string, name: string) {
+async function joinRoom(
+	context: PlayerContext,
+	roomId: string,
+	name: string,
+	role: 'mic' | 'audience'
+) {
 	await context.homePage.goto()
 	await context.homePage.joinExistingButton.click()
 	await context.homePage.roomIdInput.fill(roomId)
 	await context.homePage.nameInput.fill(name)
-	await context.homePage.audienceRoleOption.click()
+	if (role === 'mic') {
+		await context.homePage.micRoleOption.click()
+	} else {
+		await context.homePage.audienceRoleOption.click()
+	}
 	await context.homePage.joinRoomFormButton.click()
 
-	await expect(context.gamePage.infoBarRole).toHaveText('Audience')
-}
-
-// Verify the player count with a retry to allow for real-time sync.
-async function verifyPlayerCount(context: PlayerContext, expectedCount: number, timeout = 5000) {
-	await expect(async () => {
-		const count = await context.gamePage.getNumberOfPlayers()
-		expect(count).toBe(expectedCount)
-	}).toPass({ timeout })
+	await expect(context.gamePage.inviteButton).toBeVisible()
+	// The mic button only appears once this phone has joined as a mic
+	if (role === 'mic') await expect(context.gamePage.startCaptioningButton).toBeVisible()
 }

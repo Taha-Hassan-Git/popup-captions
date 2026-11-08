@@ -1,62 +1,114 @@
-import { Mic, MicOff } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import classNames from 'classnames'
+import { LoaderCircle, Mic, MicOff } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Caption } from '../../../game-logic/types'
-import {
-	captionEngines,
-	getCaptionEngine,
-	SpokenCaption,
-	useCaptionEngine,
-} from '../captioning'
+import { captionEngines, SpokenCaption, useCaptionEngine } from '../captioning'
 import { useActiveGame, useLocalPlayer } from '../hooks/useGameState'
-import { Button } from './Button'
-import { RedMessage, YellowMessage } from './Message'
-import { Panel } from './Panel'
+import { useSpeakers } from './Speakers'
 
-export function CaptionFeed() {
+function groupBySpeaker(captions: Caption[]): Caption[][] {
+	const groups: Caption[][] = []
+	for (const caption of captions) {
+		const last = groups[groups.length - 1]
+		if (last?.[0].playerId === caption.playerId) last.push(caption)
+		else groups.push([caption])
+	}
+	return groups
+}
+
+export function CaptionFeed({ fontSize }: { fontSize: number }) {
 	const { gameState } = useActiveGame()
-	const bottomRef = useRef<HTMLDivElement>(null)
+	const speakers = useSpeakers()
+	const scrollRef = useRef<HTMLDivElement>(null)
 	const { captions, players } = gameState
+	const groups = useMemo(() => groupBySpeaker(captions), [captions])
 
 	useEffect(() => {
-		bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-	}, [captions])
-
-	const speakerName = (caption: Caption) =>
-		players.find((player) => player.id === caption.playerId)?.name ?? 'Unknown'
+		const el = scrollRef.current
+		el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+	}, [captions, fontSize])
 
 	return (
-		<Panel className="!p-4">
-			<div data-testid="caption-feed" className="h-[320px] overflow-y-auto flex flex-col gap-3">
-				{captions.length === 0 ? (
-					<p className="m-auto text-gray-400">Captions will appear here</p>
-				) : (
-					captions.map((caption, i) => (
-						<div key={caption.id}>
-							{captions[i - 1]?.playerId !== caption.playerId && (
-								<p className="text-xs font-medium text-gray-500">{speakerName(caption)}</p>
-							)}
-							<p
-								className={
-									caption.final ? 'text-xl text-gray-900' : 'text-xl text-gray-400 italic'
-								}
-							>
-								{caption.text}
+		<div
+			ref={scrollRef}
+			data-testid="caption-feed"
+			className="h-full overflow-y-auto overscroll-contain flex flex-col px-4 py-4 [mask-image:linear-gradient(to_bottom,transparent,black_2rem)]"
+		>
+			<div className="mt-auto flex flex-col gap-5" style={{ fontSize }}>
+				{groups.map((group) => {
+					const playerId = group[0].playerId
+					const speaker = speakers.find((s) => s.id === playerId)
+					const name = players.find((p) => p.id === playerId)?.name ?? 'Unknown'
+					return (
+						<article key={group[0].id} className="motion-safe:animate-fade-up">
+							<h3 className="mb-1.5 flex items-center gap-2 px-1 text-xs font-semibold text-gray-500">
+								<span
+									aria-hidden
+									className="size-2 rounded-full bg-gray-400"
+									style={speaker && { backgroundColor: speaker.color }}
+								/>
+								{name}
+							</h3>
+							<p className="rounded-2xl rounded-tl-md bg-white px-4 py-3 font-medium leading-snug text-gray-900 shadow-sm ring-1 ring-gray-900/5">
+								{group.map((caption, i) => (
+									<span key={caption.id} className={caption.final ? undefined : 'text-gray-400'}>
+										{i > 0 && ' '}
+										{caption.text}
+									</span>
+								))}
 							</p>
-						</div>
-					))
-				)}
-				<div ref={bottomRef} />
+						</article>
+					)
+				})}
 			</div>
-		</Panel>
+		</div>
 	)
 }
 
-export function MicControls() {
+function Ripples({ className }: { className: string }) {
+	return (
+		<>
+			<span
+				aria-hidden
+				className={classNames(
+					'absolute inset-0 rounded-full motion-safe:animate-ripple',
+					className
+				)}
+			/>
+			<span
+				aria-hidden
+				className={classNames(
+					'absolute inset-0 rounded-full motion-safe:animate-ripple [animation-delay:1.2s]',
+					className
+				)}
+			/>
+		</>
+	)
+}
+
+export function ListeningState() {
+	return (
+		<div className="h-full flex flex-col items-center justify-center gap-8 px-6 text-center">
+			<div className="relative grid place-items-center size-28">
+				<Ripples className="bg-gray-300/50" />
+				<span className="relative grid place-items-center size-28 rounded-full bg-white text-gray-900 shadow-xl shadow-gray-900/10 ring-1 ring-gray-900/5">
+					<Mic aria-hidden className="size-11" />
+				</span>
+			</div>
+			<div>
+				<p className="text-xl font-semibold tracking-tight text-gray-900">Listening…</p>
+				<p className="mt-1 text-sm text-gray-500">Captions will appear here when someone speaks.</p>
+			</div>
+		</div>
+	)
+}
+
+/** Speech-to-caption state for this phone; only does anything when the local player is a mic. */
+export function useMicCaptioning() {
 	const { dispatch } = useActiveGame()
 	const localPlayer = useLocalPlayer()
 	const playerId = localPlayer?.id
-	const [engineId, setEngineId] = useState(() => captionEngines[0].id)
-	const engine = getCaptionEngine(engineId)
+	const engine = captionEngines[0]
 
 	const sendCaption = useCallback(
 		(caption: SpokenCaption) => {
@@ -65,52 +117,87 @@ export function MicControls() {
 		},
 		[dispatch, playerId]
 	)
-	const { supported, listening, starting, status, error, start, stop } = useCaptionEngine(
+	const { supported, listening, starting, error, start, stop } = useCaptionEngine(
 		engine,
 		sendCaption
 	)
+	const isMic = localPlayer?.role === 'mic'
 
-	if (localPlayer?.role !== 'mic') return null
+	return {
+		isMic,
+		supported,
+		listening,
+		starting,
+		error,
+		unsupportedMessage:
+			isMic && !supported ? `${engine.name} isn't supported in this browser.` : null,
+		start,
+		stop,
+	}
+}
+
+export function MicButton({
+	supported,
+	listening,
+	starting,
+	error,
+	unsupportedMessage,
+	start,
+	stop,
+}: Pick<
+	ReturnType<typeof useMicCaptioning>,
+	'supported' | 'listening' | 'starting' | 'error' | 'unsupportedMessage' | 'start' | 'stop'
+>) {
+	let title = 'Tap to start captioning'
+	let detail = 'Everyone in the room will see what you say.'
+	if (starting) {
+		title = 'Starting…'
+		detail = 'Allow microphone access if your browser asks.'
+	} else if (listening) {
+		title = 'You’re live'
+		detail = 'Tap the mic to stop.'
+	}
+	const problem = unsupportedMessage ?? error
 
 	return (
-		<Panel variant="column" className="!p-4">
-			{captionEngines.length > 1 && (
-				<label className="w-full flex flex-col gap-1 text-sm text-gray-600">
-					Captioning engine
-					<select
-						value={engine.id}
-						disabled={listening || starting}
-						onChange={(e) => setEngineId(e.target.value)}
-						className="p-2 border border-gray-200 rounded-md bg-white text-base text-gray-900"
-					>
-						{captionEngines.map((option) => (
-							<option key={option.id} value={option.id}>
-								{option.name}
-							</option>
-						))}
-					</select>
-				</label>
-			)}
-			{supported ? (
-				<Button
-					variant={listening ? 'secondary' : 'primary'}
-					className="w-full flex items-center justify-center gap-2"
-					disabled={starting}
+		<div className="h-full flex flex-col items-center justify-center gap-6 px-6 text-center">
+			<div className="relative grid place-items-center size-32">
+				{listening && <Ripples className="bg-red-500/25" />}
+				<button
+					type="button"
+					aria-label={listening ? 'Stop captioning' : 'Start captioning'}
+					disabled={!supported || starting}
 					onClick={listening ? stop : start}
+					className={classNames(
+						'relative grid place-items-center size-32 rounded-full transition duration-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-4 focus-visible:ring-offset-gray-50',
+						listening
+							? 'bg-gradient-to-b from-red-500 to-red-600 text-white shadow-xl shadow-red-600/30 focus-visible:ring-red-300'
+							: 'bg-white text-gray-900 shadow-xl shadow-gray-900/10 ring-1 ring-gray-900/5 hover:shadow-2xl hover:shadow-gray-900/15 focus-visible:ring-gray-300'
+					)}
 				>
-					{listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-					{listening ? 'Stop captioning' : 'Start captioning'}
-				</Button>
-			) : (
-				<YellowMessage message={`${engine.name} isn't supported in this browser.`} />
-			)}
-			{listening && (
-				<p className="text-sm text-gray-500 flex items-center gap-2">
-					<span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-					Listening ({status})
+					{starting ? (
+						<LoaderCircle aria-hidden className="size-11 animate-spin text-gray-400" />
+					) : listening ? (
+						<Mic aria-hidden className="size-12" />
+					) : (
+						<MicOff aria-hidden className="size-12" />
+					)}
+				</button>
+			</div>
+			<div aria-live="polite" className="max-w-xs">
+				<p className="flex items-center justify-center gap-2 text-xl font-semibold tracking-tight text-gray-900">
+					{listening && (
+						<span
+							aria-hidden
+							className="size-2 rounded-full bg-red-500 motion-safe:animate-pulse"
+						/>
+					)}
+					{title}
 				</p>
-			)}
-			{error && <RedMessage message={error} />}
-		</Panel>
+				<p className={classNames('mt-1 text-sm', problem ? 'text-red-600' : 'text-gray-500')}>
+					{problem ?? detail}
+				</p>
+			</div>
+		</div>
 	)
 }

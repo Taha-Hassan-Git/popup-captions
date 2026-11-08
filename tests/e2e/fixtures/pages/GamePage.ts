@@ -6,17 +6,19 @@ import { Locator, Page } from '@playwright/test'
 export class GamePage {
 	readonly page: Page
 	readonly roomId: Locator
-	readonly infoBarRole: Locator
-	readonly players: Locator
+	readonly speakers: Locator
+	readonly inviteButton: Locator
+	readonly startCaptioningButton: Locator
 
 	constructor(page: Page) {
 		this.page = page
 		this.roomId = page.getByTestId('room-id')
-		this.infoBarRole = page.getByTestId('info-bar-role')
-		this.players = page.getByRole('listitem')
+		this.speakers = page.getByTestId('speaker-bar').getByRole('listitem')
+		this.inviteButton = page.getByRole('button', { name: 'Invite others' })
+		this.startCaptioningButton = page.getByRole('button', { name: 'Start captioning' })
 	}
 
-	async getNumberOfPlayers(): Promise<number> {
-		return this.players.count()
+	getRoomIdFromUrl(): string {
+		return new URL(this.page.url()).pathname.split('/').pop() ?? ''
 	}
 }
