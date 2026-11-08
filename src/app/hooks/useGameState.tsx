@@ -1,7 +1,7 @@
 import usePartySocket from 'partysocket/react'
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { Action, GameInfo, GameState, Player } from '../../../game-logic/types'
-import { PARTYKIT_HOST } from '../env'
+import { PARTYKIT_HOST, PARTYKIT_SOCKET_PROTOCOL } from '../env'
 
 interface GameContextValue {
 	gameState: GameState
@@ -28,6 +28,7 @@ export function GameProvider({
 
 	const socket = usePartySocket({
 		host: PARTYKIT_HOST,
+		protocol: PARTYKIT_SOCKET_PROTOCOL,
 		party: 'game-server',
 		room: roomId,
 		id: playerId,

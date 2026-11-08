@@ -4,8 +4,9 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
-		"dev:party": "wrangler dev --ip 0.0.0.0",
-		"dev-app": "concurrently \"npm run dev\" \"npm run dev:party\"",
+		"dev:https": "node scripts/dev-cert.mjs && next dev --experimental-https --experimental-https-key certificates/dev-key.pem --experimental-https-cert certificates/dev-cert.pem",
+		"dev:party": "wrangler dev",
+		"dev-app": "concurrently \"npm run dev:https\" \"npm run dev:party\"",
 		"deploy:party": "wrangler deploy",
 		"build": "next build",
 		"start": "next start",

@@ -8,6 +8,14 @@ import { Pill } from './Pill'
 
 export const roleLabels: Record<Role, string> = { mic: 'Mic', audience: 'Audience' }
 
+function getInviteUrl(roomId: string): string {
+	const url = new URL('/', window.location.origin)
+	const lanAddress = process.env.NEXT_PUBLIC_DEV_LAN_ADDRESS
+	if (lanAddress) url.hostname = lanAddress
+	url.searchParams.set('roomId', roomId)
+	return url.toString()
+}
+
 export function RoleIcon({ role, className }: { role: Role; className?: string }) {
 	const Icon = role === 'mic' ? Mic : Eye
 	return <Icon aria-label={roleLabels[role]} className={className} />
@@ -38,7 +46,7 @@ export function RoomScreen() {
 			<Panel variant="column">
 				<p>Invite others with this link:</p>
 				<div className="bg-gray-100 p-4 border rounded-lg mt-4">
-					<QRCode size={120} value={`${window.location.origin}/?roomId=${gameState.roomId}`} />
+					<QRCode size={120} value={getInviteUrl(gameState.roomId)} />
 				</div>
 			</Panel>
 		</>

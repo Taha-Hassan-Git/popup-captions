@@ -43,15 +43,12 @@ cd popup-captions
 npm install
 ```
 
-3. Start the development server:
+3. Start the app and the partyserver dev server:
 ```bash
-npm run dev
+npm run dev-app
 ```
 
-4. Start the partyserver dev server:
-```bash
-npm run dev:party
-```
+This serves the app at `https://localhost:3000` with a self-signed certificate for localhost and your LAN IP, because browsers only allow microphone access over HTTPS. The room QR code links to your LAN IP, so phones on the same Wi-Fi can join; accept the certificate warning on the phone the first time.
 
 ### Environment Variables
 
@@ -81,7 +78,8 @@ npm run test:watch
 
 ## Development Commands
 
-- `npm run dev`: Start Next.js development server
+- `npm run dev`: Start the Next.js development server only (HTTP)
+- `npm run dev-app`: Start the full stack over HTTPS (Next.js plus the partyserver dev server)
 - `npm run dev:party`: Start the partyserver dev server (Cloudflare Workers, port 8787)
 - `npm run deploy:party`: Deploy the partyserver Worker to your Cloudflare account
 - `npm run build`: Build for production
