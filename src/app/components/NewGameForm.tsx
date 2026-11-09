@@ -25,7 +25,8 @@ const placeHolderRoomId = generateRoomId()
 export default function NewGameForm() {
 	const searchParams = useSearchParams()
 	const errorMessage = searchParams.get('error')
-	const [showErrorMessage, setShowErrorMessage] = useState<boolean>(() => !!errorMessage)
+	const [expiredError, setExpiredError] = useState<string | null>(null)
+	const showErrorMessage = !!errorMessage && errorMessage !== expiredError
 	const [gameFormData, setGameFormData] = useState<JoinFormData>(defaultGameFormData)
 	const [showJoinExisting, setShowJoinExisting] = useState<boolean | undefined>(undefined)
 	const playerId = usePlayerId()
@@ -34,24 +35,23 @@ export default function NewGameForm() {
 
 	useEffect(() => {
 		if (errorMessage) {
-			setShowErrorMessage(true)
 			const timer = setTimeout(() => {
-				setShowErrorMessage(false)
+				setExpiredError(errorMessage)
 			}, 5000)
 			return () => clearTimeout(timer)
 		}
 	}, [errorMessage])
 
-	useEffect(() => {
-		// if we have a roomId in the query params, it means they came via a qr code
-		const roomId = searchParams.get('roomId')
-		if (roomId) {
-			setGameFormData((prev) => {
-				return { ...prev, roomId }
-			})
+	// if we have a roomId in the query params, it means they came via a qr code
+	const qrRoomId = searchParams.get('roomId')
+	const [prevQrRoomId, setPrevQrRoomId] = useState<string | null>(null)
+	if (qrRoomId !== prevQrRoomId) {
+		setPrevQrRoomId(qrRoomId)
+		if (qrRoomId) {
+			setGameFormData((prev) => ({ ...prev, roomId: qrRoomId }))
 			setShowJoinExisting(true)
 		}
-	}, [searchParams])
+	}
 
 	if (showJoinExisting === undefined) {
 		return (
