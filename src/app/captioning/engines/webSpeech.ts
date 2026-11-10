@@ -57,11 +57,12 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | undefined {
 	return w.SpeechRecognition ?? w.webkitSpeechRecognition
 }
 
-async function canProcessLocally(Recognition: SpeechRecognitionConstructor, lang: string) {
+/** 'available' | 'downloadable' | 'downloading' | 'unavailable', or 'error' if the check failed. */
+async function onDeviceAvailability(Recognition: SpeechRecognitionConstructor, lang: string) {
 	try {
-		return (await Recognition.available?.({ langs: [lang], processLocally: true })) === 'available'
+		return (await Recognition.available?.({ langs: [lang], processLocally: true })) ?? 'error'
 	} catch {
-		return false
+		return 'error'
 	}
 }
 
@@ -81,7 +82,10 @@ export const webSpeechEngine: CaptionEngine = {
 
 		const lang = navigator.language || 'en-US'
 		// Only await when the browser supports it; Safari needs start() to stay inside the tap.
-		const local = Recognition.available ? await canProcessLocally(Recognition, lang) : false
+		const availability = Recognition.available
+			? await onDeviceAvailability(Recognition, lang)
+			: undefined
+		const local = availability === 'available'
 
 		const recognition = new Recognition()
 		recognition.continuous = true
@@ -154,6 +158,11 @@ export const webSpeechEngine: CaptionEngine = {
 
 		return {
 			status: local ? 'on this device' : "via the browser's speech service",
+			debugInfo: `${lang}, ${
+				availability
+					? `on-device availability: "${availability}"`
+					: "browser can't report on-device support"
+			}`,
 			stop() {
 				active = false
 				recognition.stop()

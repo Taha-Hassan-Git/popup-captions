@@ -9,11 +9,15 @@ export interface CaptionCallbacks {
 	onError(message: string): void
 	/** Called exactly once, when the session has fully stopped for any reason. */
 	onEnd(): void
+	/** Optional progress while starting, e.g. a model download. */
+	onProgress?(message: string): void
 }
 
 export interface CaptionSession {
 	/** Short description shown while listening, e.g. "on this device". */
 	readonly status: string
+	/** Extra diagnostic detail, shown on screen in development only. */
+	readonly debugInfo?: string
 	/** Stop listening; the engine should flush any unfinished phrases as final, then call `onEnd`. */
 	stop(): void
 }

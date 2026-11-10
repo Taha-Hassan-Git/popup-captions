@@ -2,7 +2,7 @@ import classNames from 'classnames'
 import { LoaderCircle, Mic, MicOff } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Caption } from '../../../game-logic/types'
-import { captionEngines, SpokenCaption, useCaptionEngine } from '../captioning'
+import { activeCaptionEngine, SpokenCaption, useCaptionEngine } from '../captioning'
 import { useActiveGame, useLocalPlayer } from '../hooks/useGameState'
 import { useSpeakers } from './Speakers'
 
@@ -108,7 +108,7 @@ export function useMicCaptioning() {
 	const { dispatch } = useActiveGame()
 	const localPlayer = useLocalPlayer()
 	const playerId = localPlayer?.id
-	const engine = captionEngines[0]
+	const engine = activeCaptionEngine
 
 	const sendCaption = useCallback(
 		(caption: SpokenCaption) => {
@@ -117,10 +117,8 @@ export function useMicCaptioning() {
 		},
 		[dispatch, playerId]
 	)
-	const { supported, listening, starting, error, start, stop } = useCaptionEngine(
-		engine,
-		sendCaption
-	)
+	const { supported, listening, starting, error, progress, status, debugInfo, start, stop } =
+		useCaptionEngine(engine, sendCaption)
 	const isMic = localPlayer?.role === 'mic'
 
 	return {
@@ -129,6 +127,11 @@ export function useMicCaptioning() {
 		listening,
 		starting,
 		error,
+		progress,
+		devInfo:
+			process.env.NODE_ENV === 'development' && status
+				? [`${engine.name} ${status}`, debugInfo].filter(Boolean).join(' · ')
+				: null,
 		unsupportedMessage:
 			isMic && !supported ? `${engine.name} isn't supported in this browser.` : null,
 		start,
@@ -141,18 +144,28 @@ export function MicButton({
 	listening,
 	starting,
 	error,
+	progress,
+	devInfo,
 	unsupportedMessage,
 	start,
 	stop,
 }: Pick<
 	ReturnType<typeof useMicCaptioning>,
-	'supported' | 'listening' | 'starting' | 'error' | 'unsupportedMessage' | 'start' | 'stop'
+	| 'supported'
+	| 'listening'
+	| 'starting'
+	| 'error'
+	| 'progress'
+	| 'devInfo'
+	| 'unsupportedMessage'
+	| 'start'
+	| 'stop'
 >) {
 	let title = 'Tap to start captioning'
 	let detail = 'Everyone in the room will see what you say.'
 	if (starting) {
 		title = 'Starting…'
-		detail = 'Allow microphone access if your browser asks.'
+		detail = progress ?? 'Allow microphone access if your browser asks.'
 	} else if (listening) {
 		title = 'You’re live'
 		detail = 'Tap the mic to stop.'
@@ -197,6 +210,11 @@ export function MicButton({
 				<p className={classNames('mt-1 text-sm', problem ? 'text-red-600' : 'text-gray-500')}>
 					{problem ?? detail}
 				</p>
+				{devInfo && (
+					<p className="mt-3 rounded-md bg-amber-100 px-2 py-1 font-mono text-xs text-amber-900">
+						{devInfo}
+					</p>
+				)}
 			</div>
 		</div>
 	)

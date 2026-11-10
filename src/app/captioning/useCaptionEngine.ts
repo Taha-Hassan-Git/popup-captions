@@ -10,6 +10,7 @@ export function useCaptionEngine(
 	const [session, setSession] = useState<CaptionSession | null>(null)
 	const [starting, setStarting] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [progress, setProgress] = useState<string | null>(null)
 	const sessionRef = useRef<CaptionSession | null>(null)
 	const startingRef = useRef(false)
 	const mountedRef = useRef(true)
@@ -30,6 +31,7 @@ export function useCaptionEngine(
 			const newSession = await engine.start({
 				onCaption: (caption) => onCaptionRef.current(caption),
 				onError: setError,
+				onProgress: setProgress,
 				onEnd: () => {
 					ended = true
 					sessionRef.current = null
@@ -47,6 +49,7 @@ export function useCaptionEngine(
 		} finally {
 			startingRef.current = false
 			setStarting(false)
+			setProgress(null)
 		}
 	}, [engine])
 
@@ -67,7 +70,9 @@ export function useCaptionEngine(
 		listening: session !== null,
 		starting,
 		status: session?.status ?? null,
+		debugInfo: session?.debugInfo ?? null,
 		error,
+		progress,
 		start,
 		stop,
 	}
