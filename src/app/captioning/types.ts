@@ -22,6 +22,11 @@ export interface CaptionSession {
 	stop(): void
 }
 
+export interface CaptionContext {
+	readonly roomId: string
+	readonly playerId: string
+}
+
 export interface CaptionEngine {
 	readonly id: string
 	readonly name: string
@@ -30,5 +35,5 @@ export interface CaptionEngine {
 	 * Called from a button tap. Anything needing user activation (mic access, speech APIs)
 	 * should happen before the first `await`. Rejects if listening can't start.
 	 */
-	start(callbacks: CaptionCallbacks): Promise<CaptionSession>
+	start(callbacks: CaptionCallbacks, context: CaptionContext): Promise<CaptionSession>
 }

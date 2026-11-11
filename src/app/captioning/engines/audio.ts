@@ -36,6 +36,16 @@ export function concat(chunks: Float32Array[]): Float32Array {
 	return output
 }
 
+/** Converts [-1, 1] float samples to signed 16-bit PCM (little-endian on every phone we target). */
+export function toPcm16(samples: Float32Array): Int16Array {
+	const output = new Int16Array(samples.length)
+	for (let i = 0; i < samples.length; i++) {
+		const s = Math.max(-1, Math.min(1, samples[i]))
+		output[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+	}
+	return output
+}
+
 /** Removes Whisper's non-speech annotations such as "[BLANK_AUDIO]", "(music)" and "*sighs*". */
 export function cleanTranscript(text: string): string {
 	return text

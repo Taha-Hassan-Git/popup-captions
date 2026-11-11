@@ -105,10 +105,12 @@ export function ListeningState() {
 
 /** Speech-to-caption state for this phone; only does anything when the local player is a mic. */
 export function useMicCaptioning() {
-	const { dispatch } = useActiveGame()
+	const { gameState, dispatch } = useActiveGame()
 	const localPlayer = useLocalPlayer()
 	const playerId = localPlayer?.id
 	const engine = activeCaptionEngine
+	const roomId = gameState.roomId
+	const context = useMemo(() => ({ roomId, playerId: playerId ?? '' }), [roomId, playerId])
 
 	const sendCaption = useCallback(
 		(caption: SpokenCaption) => {
@@ -118,7 +120,7 @@ export function useMicCaptioning() {
 		[dispatch, playerId]
 	)
 	const { supported, listening, starting, error, progress, status, debugInfo, start, stop } =
-		useCaptionEngine(engine, sendCaption)
+		useCaptionEngine(engine, context, sendCaption)
 	const isMic = localPlayer?.role === 'mic'
 
 	return {

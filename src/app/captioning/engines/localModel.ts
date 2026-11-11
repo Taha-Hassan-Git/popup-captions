@@ -2,50 +2,12 @@ import { v4 as uuidv4 } from 'uuid'
 import { captionConfig } from '../config'
 import type { CaptionEngine } from '../types'
 import { cleanTranscript, concat, resample, rms } from './audio'
+import { isMicrophoneSupported, type Microphone, openMicrophone } from './microphone'
 import type { ModelDevice, TranscriberRequest, TranscriberResponse } from './transcriber.worker'
 
 type WithoutId<T> = T extends unknown ? Omit<T, 'id'> : never
 
 const MODEL_SAMPLE_RATE = 16_000
-
-// Inlined so it doesn't need its own bundled file; batches 128-sample render quanta into ~40ms chunks.
-const CAPTURE_PROCESSOR = `
-class MicCapture extends AudioWorkletProcessor {
-	constructor() {
-		super()
-		this.buffer = new Float32Array(2048)
-		this.length = 0
-	}
-	process(inputs) {
-		const channel = inputs[0] && inputs[0][0]
-		if (!channel) return true
-		let offset = 0
-		while (offset < channel.length) {
-			const count = Math.min(channel.length - offset, this.buffer.length - this.length)
-			this.buffer.set(channel.subarray(offset, offset + count), this.length)
-			this.length += count
-			offset += count
-			if (this.length === this.buffer.length) {
-				const chunk = this.buffer.slice()
-				this.port.postMessage(chunk, [chunk.buffer])
-				this.length = 0
-			}
-		}
-		return true
-	}
-}
-registerProcessor('mic-capture', MicCapture)
-`
-
-function microphoneErrorMessage(err: unknown): string {
-	const name = err instanceof DOMException ? err.name : ''
-	if (name === 'NotAllowedError' || name === 'SecurityError') {
-		return 'Microphone access was blocked. Allow it for this site and try again.'
-	}
-	if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No microphone was found.'
-	if (name === 'NotReadableError') return 'The microphone is being used by another app.'
-	return 'Could not start the microphone.'
-}
 
 // The worker (and the model loaded in it) outlives sessions so turning the mic off and on is instant.
 let worker: Worker | null = null
@@ -114,56 +76,26 @@ export const localModelEngine: CaptionEngine = {
 	id: 'local-model',
 	name: 'On-device speech model',
 
-	isSupported: () =>
-		typeof window !== 'undefined' &&
-		typeof Worker !== 'undefined' &&
-		typeof AudioWorkletNode !== 'undefined' &&
-		!!navigator.mediaDevices?.getUserMedia,
+	isSupported: () => isMicrophoneSupported() && typeof Worker !== 'undefined',
 
 	async start({ onCaption, onError, onEnd, onProgress }) {
-		if (!window.isSecureContext) {
-			throw new Error('Microphone access needs HTTPS (or localhost). Open this page over HTTPS.')
-		}
-
-		// both need the tap's user activation, so start them before awaiting anything
-		const audioContext = new AudioContext()
-		void audioContext.resume()
-		const microphone = navigator.mediaDevices.getUserMedia({
-			audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-		})
-
 		progressListener = onProgress
-		const workletUrl = URL.createObjectURL(
-			new Blob([CAPTURE_PROCESSOR], { type: 'application/javascript' })
-		)
-		let stream: MediaStream
+		// opened first, while the tap's user activation is still valid
+		const microphoneRequest = openMicrophone()
+		let microphone: Microphone
 		let device: ModelDevice
 		try {
-			;[stream, device] = await Promise.all([
-				microphone.catch((err) => {
-					throw new Error(microphoneErrorMessage(err))
-				}),
-				loadModel(),
-				audioContext.audioWorklet.addModule(workletUrl),
-			])
+			;[microphone, device] = await Promise.all([microphoneRequest, loadModel()])
 		} catch (err) {
-			microphone.then((s) => s.getTracks().forEach((track) => track.stop())).catch(() => {})
-			void audioContext.close()
+			microphoneRequest.then((m) => m.stop()).catch(() => {})
 			throw err
 		} finally {
 			progressListener = undefined
-			URL.revokeObjectURL(workletUrl)
 		}
 
 		const config = captionConfig.localModel
-		const sampleRate = audioContext.sampleRate
+		const sampleRate = microphone.sampleRate
 		const samplesFor = (ms: number) => (ms * sampleRate) / 1000
-
-		const source = audioContext.createMediaStreamSource(stream)
-		const capture = new AudioWorkletNode(audioContext, 'mic-capture')
-		source.connect(capture)
-		// some browsers only pull audio through nodes that reach the destination; this outputs silence
-		capture.connect(audioContext.destination)
 
 		let active = true
 		let preRoll: Float32Array | null = null
@@ -223,8 +155,7 @@ export const localModelEngine: CaptionEngine = {
 			})
 		}
 
-		capture.port.onmessage = (event: MessageEvent<Float32Array>) => {
-			const chunk = event.data
+		microphone.onChunk = (chunk) => {
 			const voiced = rms(chunk) >= config.speechThreshold
 
 			if (!phrase) {
@@ -274,18 +205,14 @@ export const localModelEngine: CaptionEngine = {
 			if (!active) return
 			endPhrase()
 			active = false
-			capture.port.onmessage = null
-			source.disconnect()
-			capture.disconnect()
-			stream.getTracks().forEach((track) => track.stop())
-			void audioContext.close()
+			microphone.stop()
 			void finals.then(onEnd)
 		}
 
-		stream.getAudioTracks()[0]?.addEventListener('ended', () => {
+		microphone.onEnded = () => {
 			onError('The microphone was disconnected.')
 			stop()
-		})
+		}
 
 		return {
 			status: device === 'webgpu' ? 'on this device (GPU)' : 'on this device',

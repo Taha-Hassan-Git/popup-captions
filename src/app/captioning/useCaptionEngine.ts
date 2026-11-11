@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CaptionEngine, CaptionSession, SpokenCaption } from './types'
+import type { CaptionContext, CaptionEngine, CaptionSession, SpokenCaption } from './types'
 
 /** Runs any CaptionEngine and exposes its state to React. */
 export function useCaptionEngine(
 	engine: CaptionEngine,
+	context: CaptionContext,
 	onCaption: (caption: SpokenCaption) => void
 ) {
 	const supported = useMemo(() => engine.isSupported(), [engine])
@@ -15,10 +16,12 @@ export function useCaptionEngine(
 	const startingRef = useRef(false)
 	const mountedRef = useRef(true)
 	const onCaptionRef = useRef(onCaption)
+	const contextRef = useRef(context)
 
 	useEffect(() => {
 		onCaptionRef.current = onCaption
-	}, [onCaption])
+		contextRef.current = context
+	}, [onCaption, context])
 
 	const start = useCallback(async () => {
 		if (sessionRef.current || startingRef.current) return
@@ -28,16 +31,19 @@ export function useCaptionEngine(
 
 		let ended = false
 		try {
-			const newSession = await engine.start({
-				onCaption: (caption) => onCaptionRef.current(caption),
-				onError: setError,
-				onProgress: setProgress,
-				onEnd: () => {
-					ended = true
-					sessionRef.current = null
-					setSession(null)
+			const newSession = await engine.start(
+				{
+					onCaption: (caption) => onCaptionRef.current(caption),
+					onError: setError,
+					onProgress: setProgress,
+					onEnd: () => {
+						ended = true
+						sessionRef.current = null
+						setSession(null)
+					},
 				},
-			})
+				contextRef.current
+			)
 			if (!mountedRef.current) {
 				newSession.stop()
 			} else if (!ended) {

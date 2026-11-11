@@ -4,7 +4,7 @@ import type { DataType } from '@huggingface/transformers'
  * Central switch for how phones turn speech into captions.
  * Change `engine` here, or set NEXT_PUBLIC_CAPTION_ENGINE in .env.local to override it per environment.
  */
-export const captionEngineIds = ['web-speech', 'local-model'] as const
+export const captionEngineIds = ['web-speech', 'local-model', 'zoom-scribe'] as const
 export type CaptionEngineId = (typeof captionEngineIds)[number]
 
 const defaultEngine: CaptionEngineId = 'web-speech'
@@ -37,6 +37,13 @@ export const captionConfig = {
 		maxPhraseMs: 15_000,
 		/** How often to re-transcribe the phrase in progress to show interim captions. */
 		interimIntervalMs: 1_000,
+	},
+
+	/** Zoom Scribe Live, relayed through the party Worker which holds ZOOM_API_KEY. */
+	zoomScribe: {
+		language: 'en-US',
+		/** null lets Scribe choose; e.g. 'zoom-scribe-en-pro' for higher accuracy (premium). */
+		model: null as string | null,
 	},
 }
 

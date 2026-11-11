@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { cleanTranscript, resample, rms } from '../src/app/captioning/engines/audio'
+import { cleanTranscript, resample, rms, toPcm16 } from '../src/app/captioning/engines/audio'
 
 describe('local model audio helpers', () => {
 	it('measures the level of a chunk', () => {
@@ -16,6 +16,12 @@ describe('local model audio helpers', () => {
 		const output = resample(new Float32Array(44_100).fill(0.2), 44_100, 16_000)
 		expect(output).toHaveLength(16_000)
 		expect(output.every((sample) => Math.abs(sample - 0.2) < 1e-6)).toBe(true)
+	})
+
+	it('converts float samples to 16-bit PCM, clipping out-of-range values', () => {
+		expect(Array.from(toPcm16(Float32Array.from([0, 1, -1, 0.5, 2, -2])))).toEqual([
+			0, 32767, -32768, 16383, 32767, -32768,
+		])
 	})
 
 	it('strips non-speech annotations from transcripts', () => {

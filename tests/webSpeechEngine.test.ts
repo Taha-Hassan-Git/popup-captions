@@ -41,11 +41,14 @@ beforeEach(async () => {
 	now = 1_000_000
 	jest.spyOn(Date, 'now').mockImplementation(() => now)
 	Object.assign(globalThis, { window: { SpeechRecognition: FakeRecognition, isSecureContext: true } })
-	await webSpeechEngine.start({
-		onCaption: (caption) => captions.push(caption),
-		onError: () => {},
-		onEnd: () => {},
-	})
+	await webSpeechEngine.start(
+		{
+			onCaption: (caption) => captions.push(caption),
+			onError: () => {},
+			onEnd: () => {},
+		},
+		{ roomId: 'room', playerId: 'player' }
+	)
 })
 
 afterEach(() => {
