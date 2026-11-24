@@ -1,13 +1,4 @@
-import {
-	Action,
-	Caption,
-	CaptionLanguage,
-	GameFormInfo,
-	GameInfo,
-	isCaptionLanguage,
-	Player,
-	Role,
-} from './types'
+import { Action, Caption, GameFormInfo, GameInfo, Player, Role } from './types'
 
 export const MAX_CAPTIONS = 50
 export const MAX_CAPTION_LENGTH = 1000
@@ -49,16 +40,7 @@ export class GameManager {
 				this.handleCaption(action.payload)
 				break
 			}
-			case 'set-language': {
-				this.handleSetLanguage(action.payload.language)
-				break
-			}
 		}
-	}
-
-	private handleSetLanguage(language: CaptionLanguage): void {
-		if (!isCaptionLanguage(language)) return
-		this.game = { ...this.game, language }
 	}
 
 	private handleCaption(caption: Caption): void {

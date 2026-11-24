@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from '@jest/globals'
 import { GameManager, MAX_CAPTIONS } from '../game-logic/GameManager'
-import type { CaptionLanguage } from '../game-logic/types'
 
 // Constants for player names
 const PLAYER_1 = 'player1'
@@ -130,36 +129,5 @@ describe('When captioning...', () => {
 		const captions = gameManager.getState().captions
 		expect(captions).toHaveLength(MAX_CAPTIONS)
 		expect(captions[0].id).toBe('c5')
-	})
-})
-
-describe('When setting the room language...', () => {
-	beforeEach(() => {
-		gameManager = GameManager.createNew({
-			playerName: PLAYER_1,
-			playerId: PLAYER_1,
-			roomId: ROOM_ID,
-			role: 'audience',
-		})
-	})
-
-	it('starts with no language chosen', () => {
-		expect(gameManager.getState().language).toBeUndefined()
-	})
-
-	it('lets anyone in the room change it', () => {
-		gameManager.handleAction({ type: 'set-language', payload: { language: 'es-MX' } })
-		expect(gameManager.getState().language).toBe('es-MX')
-
-		gameManager.handleAction({ type: 'set-language', payload: { language: 'en-US' } })
-		expect(gameManager.getState().language).toBe('en-US')
-	})
-
-	it('ignores languages it does not support', () => {
-		gameManager.handleAction({
-			type: 'set-language',
-			payload: { language: 'xx-XX' as unknown as CaptionLanguage },
-		})
-		expect(gameManager.getState().language).toBeUndefined()
 	})
 })
