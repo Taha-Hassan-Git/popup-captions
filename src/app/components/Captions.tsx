@@ -1,8 +1,14 @@
 import classNames from 'classnames'
 import { LoaderCircle, Mic, MicOff } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Caption } from '../../../game-logic/types'
-import { activeCaptionEngine, SpokenCaption, useCaptionEngine } from '../captioning'
+import {
+	activeCaptionEngine,
+	CaptionLanguage,
+	isCaptionLanguage,
+	SpokenCaption,
+	useCaptionEngine,
+} from '../captioning'
 import { useActiveGame, useLocalPlayer } from '../hooks/useGameState'
 import { useSpeakers } from './Speakers'
 
@@ -103,6 +109,34 @@ export function ListeningState() {
 	)
 }
 
+const LANGUAGE_STORAGE_KEY = 'popup:caption-language'
+
+/** The phone's last choice, else Spanish if the phone is set to Spanish, else English. */
+function initialLanguage(): CaptionLanguage {
+	try {
+		const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
+		if (isCaptionLanguage(saved)) return saved
+	} catch {
+		// storage can be unavailable, e.g. in private browsing
+	}
+	const preferred = typeof navigator === 'undefined' ? '' : navigator.language
+	return preferred.toLowerCase().startsWith('es') ? 'es-MX' : 'en-US'
+}
+
+/** The language this phone's mic transcribes; switching it restarts a running session. */
+function useCaptionLanguage() {
+	const [language, setLanguageState] = useState(initialLanguage)
+	const setLanguage = useCallback((next: CaptionLanguage) => {
+		setLanguageState(next)
+		try {
+			localStorage.setItem(LANGUAGE_STORAGE_KEY, next)
+		} catch {
+			// not remembered, but still applies for this visit
+		}
+	}, [])
+	return { language, setLanguage }
+}
+
 /** Speech-to-caption state for this phone; only does anything when the local player is a mic. */
 export function useMicCaptioning() {
 	const { gameState, dispatch } = useActiveGame()
@@ -110,7 +144,11 @@ export function useMicCaptioning() {
 	const playerId = localPlayer?.id
 	const engine = activeCaptionEngine
 	const roomId = gameState.roomId
-	const context = useMemo(() => ({ roomId, playerId: playerId ?? '' }), [roomId, playerId])
+	const { language, setLanguage } = useCaptionLanguage()
+	const context = useMemo(
+		() => ({ roomId, playerId: playerId ?? '', language }),
+		[roomId, playerId, language]
+	)
 
 	const sendCaption = useCallback(
 		(caption: SpokenCaption) => {
@@ -138,6 +176,8 @@ export function useMicCaptioning() {
 			isMic && !supported ? `${engine.name} isn't supported in this browser.` : null,
 		start,
 		stop,
+		language,
+		setLanguage,
 	}
 }
 

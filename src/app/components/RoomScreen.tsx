@@ -1,7 +1,9 @@
+import classNames from 'classnames'
 import { AArrowDown, AArrowUp, CircleHelp, Eye, Mic, QrCode } from 'lucide-react'
 import { ReactNode, useState } from 'react'
 import QRCode from 'react-qr-code'
 import { Role } from '../../../game-logic/types'
+import { CaptionLanguage, captionLanguages } from '../captioning'
 import { useActiveGame } from '../hooks/useGameState'
 import { CaptionFeed, ListeningState, MicButton, useMicCaptioning } from './Captions'
 import { HowToPlayContent } from './HowToPlayContent'
@@ -14,6 +16,48 @@ const MIN_FONT_SIZE = 12
 const MAX_FONT_SIZE = 48
 const FONT_SIZE_STEP = 2
 const DEFAULT_FONT_SIZE = 20
+
+const languageLabels: Record<CaptionLanguage, { short: string; name: string }> = {
+	'en-US': { short: 'EN', name: 'English' },
+	'es-MX': { short: 'ES', name: 'Español' },
+}
+
+/** Switches the language this mic transcribes. */
+function LanguageToggle({
+	language,
+	setLanguage,
+}: {
+	language: CaptionLanguage
+	setLanguage: (language: CaptionLanguage) => void
+}) {
+	return (
+		<div
+			role="radiogroup"
+			aria-label="Spoken language"
+			className="flex items-center rounded-full bg-gray-100 p-0.5"
+		>
+			{captionLanguages.map((option) => {
+				const selected = option === language
+				return (
+					<button
+						key={option}
+						type="button"
+						role="radio"
+						aria-checked={selected}
+						aria-label={languageLabels[option].name}
+						onClick={() => setLanguage(option)}
+						className={classNames(
+							'h-9 rounded-full px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400',
+							selected ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-200'
+						)}
+					>
+						{languageLabels[option].short}
+					</button>
+				)
+			})}
+		</div>
+	)
+}
 
 const iconButton =
 	'grid size-10 shrink-0 place-items-center rounded-full text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400'
@@ -105,6 +149,7 @@ export function RoomScreen() {
 						</button>
 					</div>
 					<div className="flex-1" />
+					{mic.isMic && <LanguageToggle language={mic.language} setLanguage={mic.setLanguage} />}
 					<Modal
 						title="How it works"
 						trigger={

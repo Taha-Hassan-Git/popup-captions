@@ -4,7 +4,13 @@ import { webSpeechEngine } from './engines/webSpeech'
 import { zoomScribeEngine } from './engines/zoomScribe'
 import type { CaptionEngine } from './types'
 
-export { captionConfig, type CaptionEngineId } from './config'
+export {
+	captionConfig,
+	captionLanguages,
+	isCaptionLanguage,
+	type CaptionEngineId,
+	type CaptionLanguage,
+} from './config'
 export type {
 	CaptionCallbacks,
 	CaptionContext,

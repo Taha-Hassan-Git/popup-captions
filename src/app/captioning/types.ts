@@ -20,11 +20,15 @@ export interface CaptionSession {
 	readonly debugInfo?: string
 	/** Stop listening; the engine should flush any unfinished phrases as final, then call `onEnd`. */
 	stop(): void
+	/** Switch language without stopping. Engines without it pick up the new language on their next start. */
+	setLanguage?(language: string): void
 }
 
 export interface CaptionContext {
 	readonly roomId: string
 	readonly playerId: string
+	/** BCP 47 language to transcribe, e.g. 'en-US'. */
+	readonly language: string
 }
 
 export interface CaptionEngine {

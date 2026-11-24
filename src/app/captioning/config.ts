@@ -9,6 +9,14 @@ export type CaptionEngineId = (typeof captionEngineIds)[number]
 
 const defaultEngine: CaptionEngineId = 'web-speech'
 
+/** Languages a mic can transcribe, as BCP 47 tags for speech recognition. */
+export const captionLanguages = ['en-US', 'es-MX'] as const
+export type CaptionLanguage = (typeof captionLanguages)[number]
+
+export function isCaptionLanguage(value: unknown): value is CaptionLanguage {
+	return captionLanguages.includes(value as CaptionLanguage)
+}
+
 const envEngine = captionEngineIds.find((id) => id === process.env.NEXT_PUBLIC_CAPTION_ENGINE)
 
 export const captionConfig = {
@@ -41,7 +49,6 @@ export const captionConfig = {
 
 	/** Zoom Scribe Live, relayed through the party Worker which holds ZOOM_API_KEY. */
 	zoomScribe: {
-		language: 'en-US',
 		/** null lets Scribe choose; e.g. 'zoom-scribe-en-pro' for higher accuracy (premium). */
 		model: null as string | null,
 	},
