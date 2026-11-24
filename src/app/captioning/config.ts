@@ -41,7 +41,6 @@ export const captionConfig = {
 
 	/** Zoom Scribe Live, relayed through the party Worker which holds ZOOM_API_KEY. */
 	zoomScribe: {
-		language: 'en-US',
 		/** null lets Scribe choose; e.g. 'zoom-scribe-en-pro' for higher accuracy (premium). */
 		model: null as string | null,
 	},

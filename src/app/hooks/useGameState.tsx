@@ -1,19 +1,29 @@
 import usePartySocket from 'partysocket/react'
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { Action, GameInfo, GameState, Player } from '../../../game-logic/types'
+import { Action, CaptionLanguage, GameInfo, GameState, Player } from '../../../game-logic/types'
 import { PARTYKIT_HOST, PARTYKIT_SOCKET_PROTOCOL } from '../env'
 
 interface GameContextValue {
 	gameState: GameState
 	dispatch: (action: Action) => void
 	localPlayer: Player | null
+	language: CaptionLanguage
+	setLanguage: (language: CaptionLanguage) => void
 }
 
 const gameContext = createContext<GameContextValue>({
 	gameState: null,
 	dispatch: () => {},
 	localPlayer: null,
+	language: 'en-US',
+	setLanguage: () => {},
 })
+
+/** Before anyone picks a room language, mics use one matching their phone's settings. */
+function guessLanguage(): CaptionLanguage {
+	const preferred = typeof navigator === 'undefined' ? '' : navigator.language
+	return preferred.toLowerCase().startsWith('es') ? 'es-MX' : 'en-US'
+}
 
 export function GameProvider({
 	children,
@@ -50,8 +60,29 @@ export function GameProvider({
 		[socket]
 	)
 
+	// A choice made here shows straight away and lasts until the room reports a different language,
+	// so the toggle still works on this phone if the party server doesn't store room languages yet.
+	const roomLanguage = gameState?.language
+	const [choice, setChoice] = useState<{
+		language: CaptionLanguage
+		roomLanguage: CaptionLanguage | undefined
+	} | null>(null)
+	const [fallbackLanguage] = useState(guessLanguage)
+	const language =
+		choice && choice.roomLanguage === roomLanguage
+			? choice.language
+			: (roomLanguage ?? fallbackLanguage)
+
+	const setLanguage = useCallback(
+		(next: CaptionLanguage) => {
+			setChoice({ language: next, roomLanguage })
+			dispatch({ type: 'set-language', payload: { language: next } })
+		},
+		[dispatch, roomLanguage]
+	)
+
 	return (
-		<gameContext.Provider value={{ gameState, dispatch, localPlayer }}>
+		<gameContext.Provider value={{ gameState, dispatch, localPlayer, language, setLanguage }}>
 			{children}
 		</gameContext.Provider>
 	)
@@ -68,6 +99,12 @@ export function useDispatch(): (action: Action) => void {
 /** The local player, or null if viewing as a spectator (never joined a room). */
 export function useLocalPlayer(): Player | null {
 	return useContext(gameContext).localPlayer
+}
+
+/** The language mics in this room transcribe, and a way for anyone in the room to change it. */
+export function useRoomLanguage() {
+	const { language, setLanguage } = useContext(gameContext)
+	return { language, setLanguage }
 }
 
 /** Asserts the room has loaded. */

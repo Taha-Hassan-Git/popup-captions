@@ -30,7 +30,7 @@ export const zoomScribeEngine: CaptionEngine = {
 
 	isSupported: () => isMicrophoneSupported() && typeof WebSocket !== 'undefined',
 
-	async start({ onCaption, onError, onEnd }, { roomId, playerId }) {
+	async start({ onCaption, onError, onEnd }, { roomId, playerId, language }) {
 		// opened first, while the tap's user activation is still valid
 		const microphoneRequest = openMicrophone()
 		const socket = new WebSocket(relayUrl(roomId, playerId))
@@ -53,7 +53,7 @@ export const zoomScribeEngine: CaptionEngine = {
 			throw err
 		}
 
-		const { language, model } = captionConfig.zoomScribe
+		const { model } = captionConfig.zoomScribe
 		socket.send(
 			JSON.stringify({
 				type: 'session.update',
@@ -136,7 +136,8 @@ export const zoomScribeEngine: CaptionEngine = {
 			microphone.onChunk = null
 			sendBuffered()
 			microphone.stop()
-			if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'session.close' }))
+			if (socket.readyState === WebSocket.OPEN)
+				socket.send(JSON.stringify({ type: 'session.close' }))
 			closeTimer = setTimeout(() => socket.close(), CLOSE_TIMEOUT_MS)
 		}
 

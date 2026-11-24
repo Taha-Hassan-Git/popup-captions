@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { webSpeechEngine } from '../src/app/captioning/engines/webSpeech'
-import type { SpokenCaption } from '../src/app/captioning/types'
+import type { CaptionSession, SpokenCaption } from '../src/app/captioning/types'
 
 class FakeRecognition {
 	static instance: FakeRecognition
@@ -27,6 +27,8 @@ function emit(resultIndex: number, results: [string, boolean][]) {
 }
 
 let captions: SpokenCaption[]
+let session: CaptionSession
+let errors: string[]
 let now: number
 
 /** The latest version of each caption, in the order they first appeared. */
@@ -38,16 +40,19 @@ function shownCaptions() {
 
 beforeEach(async () => {
 	captions = []
+	errors = []
 	now = 1_000_000
 	jest.spyOn(Date, 'now').mockImplementation(() => now)
-	Object.assign(globalThis, { window: { SpeechRecognition: FakeRecognition, isSecureContext: true } })
-	await webSpeechEngine.start(
+	Object.assign(globalThis, {
+		window: { SpeechRecognition: FakeRecognition, isSecureContext: true },
+	})
+	session = await webSpeechEngine.start(
 		{
 			onCaption: (caption) => captions.push(caption),
-			onError: () => {},
+			onError: (message) => errors.push(message),
 			onEnd: () => {},
 		},
-		{ roomId: 'room', playerId: 'player' }
+		{ roomId: 'room', playerId: 'player', language: 'en-US' }
 	)
 })
 
@@ -73,7 +78,14 @@ describe('Web Speech engine', () => {
 	})
 
 	it('merges partials reported as new results into one caption (Android Chrome)', () => {
-		const partials = ['hello', 'hello', 'hello', 'hello my', 'hello my name', 'hello my name is Taha']
+		const partials = [
+			'hello',
+			'hello',
+			'hello',
+			'hello my',
+			'hello my name',
+			'hello my name is Taha',
+		]
 		const results: [string, boolean][] = []
 		for (const text of partials) {
 			results.push([text, true])
@@ -101,5 +113,29 @@ describe('Web Speech engine', () => {
 		FakeRecognition.instance.stop()
 
 		expect(captions.at(-1)).toMatchObject({ text: 'half a sente', final: true })
+	})
+
+	it('listens in the room language', () => {
+		expect(FakeRecognition.instance.lang).toBe('en-US')
+	})
+
+	it('switches language mid-session by restarting recognition', async () => {
+		emit(0, [['hello', false]])
+		const before = FakeRecognition.instance
+		let restarts = 0
+		before.start = () => {
+			restarts++
+		}
+
+		// quick, repeated switches are deliberate restarts, not the browser giving up
+		await session.setLanguage?.('es-MX')
+		await session.setLanguage?.('en-US')
+		await session.setLanguage?.('es-MX')
+
+		expect(before.lang).toBe('es-MX')
+		expect(restarts).toBe(3)
+		expect(errors).toEqual([])
+		// the unfinished phrase was kept as final rather than dropped
+		expect(shownCaptions()).toEqual([expect.objectContaining({ text: 'hello', final: true })])
 	})
 })

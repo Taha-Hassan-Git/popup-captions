@@ -63,6 +63,11 @@ export function useCaptionEngine(
 		sessionRef.current?.stop()
 	}, [])
 
+	// switch a running session to the new language
+	useEffect(() => {
+		sessionRef.current?.setLanguage?.(context.language)
+	}, [context.language])
+
 	useEffect(() => {
 		mountedRef.current = true
 		return () => {

@@ -76,7 +76,7 @@ export class GameServer extends Server<Env> {
 		}
 		this.gameManager.handleAction(action)
 		this.broadcast(JSON.stringify(this.gameManager.getState()))
-		if (action.type === 'caption' && action.payload.final) {
+		if ((action.type === 'caption' && action.payload.final) || action.type === 'set-language') {
 			void this.saveGame()
 		}
 	}
@@ -150,7 +150,9 @@ async function relayToScribe(request: Request, env: Env, roomId: string): Promis
 	server.addEventListener('close', (event) => closeQuietly(upstream, event.code, event.reason))
 	upstream.addEventListener('close', (event) => closeQuietly(server, event.code, event.reason))
 	server.addEventListener('error', () => closeQuietly(upstream))
-	upstream.addEventListener('error', () => closeQuietly(server, 1000, 'Zoom Scribe connection failed'))
+	upstream.addEventListener('error', () =>
+		closeQuietly(server, 1000, 'Zoom Scribe connection failed')
+	)
 
 	return new Response(null, { status: 101, webSocket: client })
 }

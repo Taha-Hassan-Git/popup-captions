@@ -73,19 +73,19 @@ export const webSpeechEngine: CaptionEngine = {
 
 	isSupported: () => !!getSpeechRecognition(),
 
-	async start({ onCaption, onError, onEnd }) {
+	async start({ onCaption, onError, onEnd }, { language }) {
 		const Recognition = getSpeechRecognition()
 		if (!Recognition) throw new Error("This browser doesn't support speech recognition.")
 		if (!window.isSecureContext) {
 			throw new Error('Microphone access needs HTTPS (or localhost). Open this page over HTTPS.')
 		}
 
-		const lang = navigator.language || 'en-US'
+		let lang = language
 		// Only await when the browser supports it; Safari needs start() to stay inside the tap.
-		const availability = Recognition.available
+		let availability = Recognition.available
 			? await onDeviceAvailability(Recognition, lang)
 			: undefined
-		const local = availability === 'available'
+		let local = availability === 'available'
 
 		const recognition = new Recognition()
 		recognition.continuous = true
@@ -157,14 +157,33 @@ export const webSpeechEngine: CaptionEngine = {
 		recognition.start()
 
 		return {
-			status: local ? 'on this device' : "via the browser's speech service",
-			debugInfo: `${lang}, ${
-				availability
-					? `on-device availability: "${availability}"`
-					: "browser can't report on-device support"
-			}`,
+			get status() {
+				return local ? 'on this device' : "via the browser's speech service"
+			},
+			get debugInfo() {
+				return `${lang}, ${
+					availability
+						? `on-device availability: "${availability}"`
+						: "browser can't report on-device support"
+				}`
+			},
 			stop() {
 				active = false
+				recognition.stop()
+			},
+			async setLanguage(next) {
+				if (next === lang) return
+				lang = next
+				if (Recognition.available) {
+					availability = await onDeviceAvailability(Recognition, next)
+					local = availability === 'available'
+				}
+				if (!active || lang !== next) return
+				recognition.lang = next
+				recognition.processLocally = local
+				// onend restarts recognition, which picks up the new language; this restart is deliberate,
+				// so it must not count towards the "keeps stopping" check
+				sessionStartedAt = 0
 				recognition.stop()
 			},
 		}

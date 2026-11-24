@@ -3,7 +3,7 @@ import { LoaderCircle, Mic, MicOff } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Caption } from '../../../game-logic/types'
 import { activeCaptionEngine, SpokenCaption, useCaptionEngine } from '../captioning'
-import { useActiveGame, useLocalPlayer } from '../hooks/useGameState'
+import { useActiveGame, useLocalPlayer, useRoomLanguage } from '../hooks/useGameState'
 import { useSpeakers } from './Speakers'
 
 function groupBySpeaker(captions: Caption[]): Caption[][] {
@@ -110,7 +110,11 @@ export function useMicCaptioning() {
 	const playerId = localPlayer?.id
 	const engine = activeCaptionEngine
 	const roomId = gameState.roomId
-	const context = useMemo(() => ({ roomId, playerId: playerId ?? '' }), [roomId, playerId])
+	const { language } = useRoomLanguage()
+	const context = useMemo(
+		() => ({ roomId, playerId: playerId ?? '', language }),
+		[roomId, playerId, language]
+	)
 
 	const sendCaption = useCallback(
 		(caption: SpokenCaption) => {
